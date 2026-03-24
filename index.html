@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<!-- Created by Pawan K Jajoo -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Hotspot Annotation Editor</title>
+<style>
+  /*
+   * ============================================
+   *  HOTSPOT ANNOTATION EDITOR — Main Stylesheet
+   *  Built to replicate the Podium1 Racing site
+   *  annotated product image compnent. Users can
+   *  upload any image, place draggable hotspots,
+   *  and export clean embed code for Wix.
+   * ============================================
+   */
+
+  /* Global reset — nothing fancy just the basics */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+
+  /* ── Top Bar ── */
+  /* Fixed header with the app title and action buttons on the right side */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #1a1a1a; border-bottom: 1px solid #333; }
+  .topbar h1 { font-size: 16px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+  .topbar-actions { display: flex; gap: 10px; }
+
+  /* Reusable button styles — primary is the red brand colour, secondary is the muted gray */
+  .btn { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: #ce1e1e; color: #fff; }
+  .btn-primary:hover { background: #e02020; }
+  .btn-secondary { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
+  .btn-secondary:hover { background: #333; color: #fff; }
+  .btn-success { background: #1e8e3e; color: #fff; }
+  .btn-success:hover { background: #25a04a; }
+
+  /* ── Main Layout ── */
+  /* Three-column flexbox: sidebar | canvas | editor panel */
+  .main { display: flex; height: calc(100vh - 53px); }
+
+  /* ── Left Panel: Annotation List ── */
+  /* This sidebar shows all the annotation cards in a scrollable list */
+  .sidebar { width: 320px; background: #161616; border-right: 1px solid #2a2a2a; display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 14px 16px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; }
+  .sidebar-header h2 { font-size: 13px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Annotation cards — each one represents a single hotspot on the image */
+  .annotation-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .annotation-card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .annotation-card:hover { border-color: #555; }
+  .annotation-card.active { border-color: #ce1e1e; background: #221a1a; }
+  .annotation-card .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .annotation-card .card-num { background: #ce1e1e; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .annotation-card .card-delete { background: none; border: none; color: #666; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+  .annotation-card .card-delete:hover { color: #ff4444; background: #2a1a1a; }
+  .annotation-card .card-title { font-size: 13px; font-weight: 600; color: #ddd; }
+  .annotation-card .card-subtitle { font-size: 11px; color: #888; margin-top: 2px; }
+  .annotation-card .card-pos { font-size: 10px; color: #666; margin-top: 4px; font-family: monospace; }
+
+  /* The dashed "add" button at the bottom of the sidebar */
+  .add-btn { margin: 8px; padding: 10px; background: #1e1e1e; border: 1px dashed #444; border-radius: 8px; color: #888; cursor: pointer; text-align: center; font-size: 13px; transition: all 0.15s; }
+  .add-btn:hover { border-color: #ce1e1e; color: #ce1e1e; background: #221a1a; }
+
+  /* ── Center: Image Canvas ── */
+  /* This is where the uploaded image lives with draggable hotspot overlays */
+  .canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+  .canvas-wrapper { position: relative; display: inline-block; max-width: 90%; max-height: 90%; }
+  .canvas-wrapper img { display: block; max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 4px; }
+
+  /* Upload dropzone — shown before user selects an image */
+  .upload-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #444; border-radius: 16px; padding: 60px 40px; cursor: pointer; transition: all 0.2s; }
+  .upload-zone:hover { border-color: #ce1e1e; background: rgba(206,30,30,0.05); }
+  .upload-zone svg { width: 48px; height: 48px; color: #666; margin-bottom: 16px; }
+  .upload-zone p { color: #888; font-size: 14px; }
+  .upload-zone .hint { color: #555; font-size: 12px; margin-top: 8px; }
+  #file-input { display: none; }
+
+  /* ── Hotspot Buttons on Image ── */
+  /* These are the red circular + buttons that sit on top of the product image */
+  .hotspot-btn { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #ce1e1e; border: none; cursor: grab; display: flex; align-items: center; justify-content: center; z-index: 10; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.4); transform: translate(-50%, -50%); }
+  .hotspot-btn:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 4px 16px rgba(206,30,30,0.5); }
+  .hotspot-btn.active { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 0 3px rgba(206,30,30,0.4), 0 4px 16px rgba(206,30,30,0.5); }
+  .hotspot-btn.dragging { cursor: grabbing; opacity: 0.8; }
+  .hotspot-btn svg { pointer-events: none; }
+  /* Emoji variant — when user picks an emoji instead of the default plus icon */
+  .hotspot-btn .emoji-icon { font-size: 18px; pointer-events: none; line-height: 1; }
+
+  /* ── Right Panel: Editor ── */
+  /* Property panel for editing the currently selected annotation fields */
+  .editor { width: 380px; background: #161616; border-left: 1px solid #2a2a2a; display: flex; flex-direction: column; overflow-y: auto; }
+  .editor-header { padding: 14px 16px; border-bottom: 1px solid #2a2a2a; }
+  .editor-header h2 { font-size: 13px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+  .editor-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #555; font-size: 13px; padding: 20px; text-align: center; }
+
+  /* Form fields inside the editor panel */
+  .editor-form { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .field input, .field textarea { width: 100%; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 10px 12px; color: #ddd; font-size: 13px; font-family: inherit; transition: border-color 0.15s; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: #ce1e1e; }
+  .field textarea { resize: vertical; min-height: 100px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  /* Media image upload area inside the editor — optional image for each annotation */
+  .image-upload-field { border: 1px dashed #444; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .image-upload-field:hover { border-color: #ce1e1e; background: rgba(206,30,30,0.05); }
+  .image-upload-field img { max-width: 100%; max-height: 120px; border-radius: 4px; margin-bottom: 8px; }
+  .image-upload-field p { font-size: 12px; color: #888; }
+  .image-upload-field .remove-img { display: inline-block; margin-top: 6px; color: #ce1e1e; font-size: 11px; cursor: pointer; }
+  #annotation-image-input { display: none; }
+
+  /* ── Preview Modal ── */
+  /* Full-screen overlay that shows what the final embedded widget will look like */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #1a1a1a; border-radius: 12px; max-width: 95vw; max-height: 95vh; overflow: auto; padding: 24px; position: relative; }
+  .modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #999; font-size: 24px; cursor: pointer; }
+  .modal-close:hover { color: #fff; }
+
+  /* ── Code Modal ── */
+  /* Shows the generated HTML embed code in a scrollable pre block */
+  .code-area { background: #111; border: 1px solid #333; border-radius: 8px; padding: 16px; max-height: 60vh; overflow: auto; margin-top: 16px; }
+  .code-area pre { color: #aaa; font-size: 12px; font-family: 'Cascadia Code', 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; }
+  .copy-feedback { color: #1e8e3e; font-size: 12px; margin-left: 10px; opacity: 0; transition: opacity 0.3s; }
+  .copy-feedback.show { opacity: 1; }
+
+  /* ── LIVE PREVIEW (the actual output renderd in the preview modal) ── */
+  .hotspots-preview-wrapper { display: flex; flex-direction: row; max-width: 1170px; margin: 0 auto; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .hotspots-preview-image-area { position: relative; flex: 0 0 60%; }
+  .hotspots-preview-image-area img { width: 100%; display: block; }
+  .hotspots-preview-content { flex: 0 0 40%; padding: 20px 0 20px 40px; display: flex; align-items: center; }
+  .hp-btn { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #ce1e1e; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  .hp-btn:hover, .hp-btn.hp-active { transform: translate(-50%, -50%) scale(1.15); }
+  .hp-btn .emoji-icon { font-size: 18px; line-height: 1; }
+  .hp-content-block { display: none; flex-direction: column; }
+  .hp-content-block.hp-visible { display: flex; }
+  .hp-content-block h4 { font-size: 13px; letter-spacing: 3px; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+  .hp-content-block h3 { font-size: 22px; font-weight: 700; color: #111; margin-bottom: 12px; text-transform: uppercase; }
+  .hp-content-block p { font-size: 14px; line-height: 1.6; color: #444; }
+  .hp-content-block img { max-width: 100%; border-radius: 6px; margin-bottom: 12px; }
+
+  /* Custom scrollbar — keeps things looking clean in dark mode */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+  /* ── Sidebar Bottom Controls: Button Color + Icon Picker ── */
+  .sidebar-controls { padding: 12px 16px; border-top: 1px solid #2a2a2a; display: flex; flex-direction: column; gap: 12px; }
+  .color-row { display: flex; align-items: center; gap: 10px; }
+  .color-row input[type="color"] { width: 40px; height: 32px; border: 1px solid #444; border-radius: 4px; background: #1e1e1e; cursor: pointer; padding: 2px; }
+
+  /* Icon mode toggle — lets user switch between default + sign and custom emoji */
+  .icon-toggle { display: flex; gap: 6px; }
+  .icon-toggle button { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #1e1e1e; color: #aaa; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .icon-toggle button.active { border-color: #ce1e1e; background: #2a1a1a; color: #fff; }
+  .icon-toggle button:hover { border-color: #666; }
+
+  /* Emoji picker grid — a scrollable set of commonly used emojis across platforms */
+  .emoji-picker-area { margin-top: 6px; }
+  .emoji-search { width: 100%; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 7px 10px; color: #ddd; font-size: 12px; margin-bottom: 6px; }
+  .emoji-search:focus { outline: none; border-color: #ce1e1e; }
+  .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; max-height: 160px; overflow-y: auto; background: #1a1a1a; border-radius: 6px; padding: 4px; }
+  .emoji-grid button { background: none; border: 1px solid transparent; border-radius: 4px; font-size: 20px; padding: 4px; cursor: pointer; transition: all 0.1s; line-height: 1.2; }
+  .emoji-grid button:hover { background: #2a2a2a; border-color: #444; }
+  .emoji-grid button.selected { background: #2a1a1a; border-color: #ce1e1e; }
+  .emoji-category-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.8px; padding: 6px 2px 3px; grid-column: 1 / -1; }
+
+  /* Current icon preview shown next to the toggle buttons */
+  .current-icon-preview { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #888; }
+  .current-icon-preview .preview-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .current-icon-preview .preview-circle svg { width: 16px; height: 16px; }
+  .current-icon-preview .preview-circle .emoji-icon { font-size: 15px; }
+</style>
+</head>
+<body>
+
+<!-- Top Bar — app title and the two main action buttons -->
+<div class="topbar">
+  <h1>HOTSPOT ANNOTATION EDITOR</h1>
+  <div class="topbar-actions">
+    <button class="btn btn-secondary" onclick="showPreview()">Preview</button>
+    <button class="btn btn-success" onclick="showCode()">Generate Embed Code</button>
+  </div>
+</div>
+
+<!-- Main three-column layout: sidebar | canvas | editor -->
+<div class="main">
+
+  <!-- Left Sidebar: scrollable list of all annotations the user has added -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Annotations</h2>
+      <span id="annotation-count" style="font-size:11px;color:#666">0 / 20</span>
+    </div>
+    <div class="annotation-list" id="annotation-list"></div>
+    <div class="add-btn" onclick="addAnnotation()">+ Add Annotation</div>
+
+    <!-- Sidebar bottom controls: color picker and icon mode selector -->
+    <div class="sidebar-controls">
+      <!-- Button color chooser -->
+      <div>
+        <label style="font-size:11px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:block;">Button Color</label>
+        <div class="color-row">
+          <input type="color" id="btn-color" value="#ce1e1e" onchange="updateButtonColor(this.value)">
+          <span id="btn-color-hex" style="font-size:12px;color:#888;font-family:monospace">#ce1e1e</span>
+        </div>
+      </div>
+
+      <!-- Icon mode: choose between the original + sign or a custom emoji -->
+      <div>
+        <label style="font-size:11px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:block;">Hotspot Icon</label>
+        <div class="icon-toggle">
+          <button id="icon-mode-plus" class="active" onclick="setIconMode('plus')">+ Plus Sign</button>
+          <button id="icon-mode-emoji" onclick="setIconMode('emoji')">Emoji</button>
+        </div>
+        <!-- Shows what the current icon looks like on the actual button -->
+        <div class="current-icon-preview">
+          <div class="preview-circle" id="icon-preview-circle" style="background:#ce1e1e;">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M17.409 8.929H10.714V2.258C10.714 1.692 10.208 1.229 9.643 1.229C9.078 1.229 8.572 1.692 8.572 2.258V8.929H1.967C1.401 8.929 0.938 9.435 0.938 10C0.938 10.565 1.401 11.071 1.967 11.071H8.572V17.7C8.572 18.266 9.078 18.729 9.643 18.729C10.208 18.729 10.714 18.266 10.714 17.7V11.071H17.409C17.975 11.071 18.438 10.565 18.438 10C18.438 9.435 17.975 8.929 17.409 8.929Z" fill="white"/></svg>
+          </div>
+          <span id="icon-preview-label">Default plus icon</span>
+        </div>
+        <!-- Emoji picker — only visible when emoji mode is selected -->
+        <div class="emoji-picker-area" id="emoji-picker-area" style="display:none;">
+          <input type="text" class="emoji-search" id="emoji-search" placeholder="Search emojis..." oninput="filterEmojis(this.value)">
+          <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: the main image canvas with hotspot overlay buttons -->
+  <div class="canvas-area" id="canvas-area">
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      <p>Click or drag an image here</p>
+      <span class="hint">PNG, JPG, WebP — any size</span>
+    </div>
+    <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)">
+    <div class="canvas-wrapper" id="canvas-wrapper" style="display:none;">
+      <img id="main-image" src="" alt="Product image">
+      <div id="hotspot-container"></div>
+    </div>
+  </div>
+
+  <!-- Right Panel: edit the selected annotation's text, image, and position -->
+  <div class="editor">
+    <div class="editor-header"><h2>Edit Annotation</h2></div>
+    <div class="editor-empty" id="editor-empty">
+      <p>Select an annotation from the list or click a hotspot on the image to edit it.</p>
+    </div>
+    <div class="editor-form" id="editor-form" style="display:none;">
+      <div class="field">
+        <label>Subtitle (Brand / Category)</label>
+        <input type="text" id="ed-subtitle" placeholder="e.g. LOGITECH" oninput="saveField('subtitle', this.value)">
+      </div>
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="ed-title" placeholder="e.g. 5.1 Surround Sound" oninput="saveField('title', this.value)">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="ed-desc" placeholder="Detailed description text..." oninput="saveField('description', this.value)"></textarea>
+      </div>
+      <div class="field">
+        <label>Media Image (optional — shows above text)</label>
+        <div class="image-upload-field" id="media-upload" onclick="document.getElementById('annotation-image-input').click()">
+          <div id="media-preview"></div>
+          <p id="media-upload-text">Click to upload an image</p>
+        </div>
+        <input type="file" id="annotation-image-input" accept="image/*" onchange="handleAnnotationImage(event)">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Top (%)</label>
+          <input type="number" id="ed-top" min="0" max="100" step="0.5" oninput="saveField('top', this.value)">
+        </div>
+        <div class="field">
+          <label>Left (%)</label>
+          <input type="number" id="ed-left" min="0" max="100" step="0.5" oninput="saveField('left', this.value)">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal — shows the final widget in a white container -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal" style="width:1200px;max-width:95vw;">
+    <button class="modal-close" onclick="closeModal('preview-modal')">&times;</button>
+    <h2 style="font-size:16px;margin-bottom:16px;color:#fff;">Live Preview</h2>
+    <div id="preview-content" style="background:#fff;border-radius:8px;padding:20px;"></div>
+  </div>
+</div>
+
+<!-- Code Modal — displays the generated Wix embed code with copy functionality -->
+<div class="modal-overlay" id="code-modal">
+  <div class="modal" style="width:900px;max-width:95vw;">
+    <button class="modal-close" onclick="closeModal('code-modal')">&times;</button>
+    <h2 style="font-size:16px;color:#fff;">Embed Code for Wix
+      <button class="btn btn-primary" style="margin-left:12px;font-size:12px;" onclick="copyCode()">Copy Code</button>
+      <span class="copy-feedback" id="copy-feedback">Copied!</span>
+    </h2>
+    <p style="font-size:12px;color:#888;margin-top:8px;">Paste this into a Wix HTML embed (Custom Element or HTML iframe). Go to your Wix editor → Add → Embed → Custom Embeds → Embed a Widget → paste the code.</p>
+    <div class="code-area"><pre id="code-output"></pre></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  APPLICATION STATE
+//  All the global varibles that drive the editor.
+//  These get persisted to localStorage every 3 sec
+//  so the user doesn't lose work on accidental refresh.
+// ═══════════════════════════════════════════════════
+
+let annotations = [];       // array of annotation objects with id, title, description, etc
+let selectedId = null;       // which annotation is currently selected for editing
+let mainImageSrc = '';       // the image source (either data url or hosted url)
+let mainImageDataUrl = '';   // keep the data url seperate for save/load purposes
+let buttonColor = '#ce1e1e'; // hotspot button backround color — red by default to match Podium1
+let iconMode = 'plus';       // 'plus' for default SVG plus sign, 'emoji' for custom emoji icon
+let iconEmoji = '🔍';       // the currently selected emoji (only used when iconMode is 'emoji')
+let dragState = null;        // tracks drag operation state when user moves a hotspot
+
+// The SVG markup for the default plus icon — same one used on the orignal Podium1 site
+const PLUS_SVG = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M17.409 8.929H10.714V2.258C10.714 1.692 10.208 1.229 9.643 1.229C9.078 1.229 8.572 1.692 8.572 2.258V8.929H1.967C1.401 8.929 0.938 9.435 0.938 10C0.938 10.565 1.401 11.071 1.967 11.071H8.572V17.7C8.572 18.266 9.078 18.729 9.643 18.729C10.208 18.729 10.714 18.266 10.714 17.7V11.071H17.409C17.975 11.071 18.438 10.565 18.438 10C18.438 9.435 17.975 8.929 17.409 8.929Z" fill="white"/></svg>';
+
+// A smaller version for the preview circle in the sidebar
+const PLUS_SVG_SMALL = '<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M17.409 8.929H10.714V2.258C10.714 1.692 10.208 1.229 9.643 1.229C9.078 1.229 8.572 1.692 8.572 2.258V8.929H1.967C1.401 8.929 0.938 9.435 0.938 10C0.938 10.565 1.401 11.071 1.967 11.071H8.572V17.7C8.572 18.266 9.078 18.729 9.643 18.729C10.208 18.729 10.714 18.266 10.714 17.7V11.071H17.409C17.975 11.071 18.438 10.565 18.438 10C18.438 9.435 17.975 8.929 17.409 8.929Z" fill="white"/></svg>';
+
+
+// ═══════════════════════════════════════════════════
+//  EMOJI DATA
+//  Curated list of emojis that work accross Apple,
+//  Android (Google), and web platforms. Organized by
+//  category so users can find what they need quickly.
+//  We intentionally keep this list manageable instead
+//  of dumping the full unicode emoji spec in here.
+// ═══════════════════════════════════════════════════
+
+const EMOJI_CATEGORIES = [
+  {
+    name: 'Pointers & Symbols',
+    emojis: ['👆', '👇', '👈', '👉', '☝️', '👀', '🔍', '📍', '📌', '🎯', '⭐', '💡', '🔔', '❗', '❓', '✅', '❌', '⚡', '🔥', '💥', '✨', '💫', '🌟', '💎', '🏷️', '🔗', '➡️', '⬆️']
+  },
+  {
+    name: 'Objects & Tools',
+    emojis: ['🔧', '🔩', '⚙️', '🛠️', '🔨', '💻', '🖥️', '🎮', '🕹️', '🎧', '🔊', '🔇', '📱', '💿', '🔌', '🔋', '💡', '📷', '🎬', '🏎️', '🚗', '🏁', '🏆', '🥇', '🎪', '🎨', '🖌️', '📐']
+  },
+  {
+    // Faces and hand gestures — useful for callouts and interactive elemnts
+    name: 'People & Gestures',
+    emojis: ['👍', '👎', '👏', '🤝', '✌️', '🤞', '🫵', '💪', '🙌', '👋', '🤙', '🫡', '😎', '🤓', '🧐', '💀', '🤖', '👾', '😍', '🤩']
+  },
+  {
+    name: 'Shapes & Misc',
+    emojis: ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚪', '⚫', '🟤', '🔶', '🔷', '🔸', '🔹', '▶️', '⏩', '🔺', '🔻', '💠', '🔘', '⭕', '♦️', '♠️', '♥️', '♣️', '🃏', '➕', '➖', '✖️']
+  }
+];
+
+// Flattened list for search filtering
+const ALL_EMOJIS = EMOJI_CATEGORIES.flatMap(c => c.emojis);
+
+
+// ═══════════════════════════════════════════════════
+//  IMAGE UPLOAD HANDLING
+//  Supports both click-to-upload and drag & drop.
+//  We use FileReader to get a base64 data URL which
+//  lets us display it immediately without a server.
+// ═══════════════════════════════════════════════════
+
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  // Once the file is read, update the canvas to show the uploaded image
+  reader.onload = (ev) => {
+    mainImageSrc = ev.target.result;
+    mainImageDataUrl = ev.target.result;
+    document.getElementById('main-image').src = mainImageSrc;
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('canvas-wrapper').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// Set up drag and drop on the canvas area so user can just toss an image in
+const canvasArea = document.getElementById('canvas-area');
+canvasArea.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+canvasArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const file = e.dataTransfer.files[0];
+  // Only accept image files — we don't want someone dropping a PDF in here
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      mainImageSrc = ev.target.result;
+      mainImageDataUrl = ev.target.result;
+      document.getElementById('main-image').src = mainImageSrc;
+      document.getElementById('upload-zone').style.display = 'none';
+      document.getElementById('canvas-wrapper').style.display = 'inline-block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+
+// ═══════════════════════════════════════════════════
+//  ANNOTATION CRUD OPERATIONS
+//  Create, read, update, delete annotation objects.
+//  Each annotation has: id, subtitle, title,
+//  description, mediaImage, top (%), left (%)
+// ═══════════════════════════════════════════════════
+
+function addAnnotation() {
+  // Generate a unique id using timestamp + random to avoid colisions
+  const id = Date.now() + Math.random();
+  annotations.push({
+    id,
+    subtitle: '',
+    title: 'New Annotation',
+    description: '',
+    mediaImage: '',
+    top: 50,
+    left: 50
+  });
+  // Auto-select the new annotation so user can start editing right away
+  selectAnnotation(id);
+  renderAll();
+}
+
+function removeAnnotation(id) {
+  annotations = annotations.filter(a => a.id !== id);
+  // If the deleted annotation was selected, clear the editor panel
+  if (selectedId === id) { selectedId = null; showEditorEmpty(); }
+  renderAll();
+}
+
+function selectAnnotation(id) {
+  selectedId = id;
+  const ann = annotations.find(a => a.id === id);
+  if (!ann) return;
+
+  // Show the editor form and hide the empty state placeholder
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-form').style.display = 'flex';
+
+  // Populate all the form fields with the selected annotation's data
+  document.getElementById('ed-subtitle').value = ann.subtitle;
+  document.getElementById('ed-title').value = ann.title;
+  document.getElementById('ed-desc').value = ann.description;
+  document.getElementById('ed-top').value = parseFloat(ann.top);
+  document.getElementById('ed-left').value = parseFloat(ann.left);
+
+  // Handle the media image preview — show thumbnail if one exists
+  const mp = document.getElementById('media-preview');
+  const mt = document.getElementById('media-upload-text');
+  if (ann.mediaImage) {
+    mp.innerHTML = '<img src="'+ann.mediaImage+'" style="max-width:100%;max-height:120px;border-radius:4px;margin-bottom:8px;"><br><span class="remove-img" onclick="event.stopPropagation();removeMediaImage()">Remove image</span>';
+    mt.style.display = 'none';
+  } else {
+    mp.innerHTML = '';
+    mt.style.display = 'block';
+  }
+  renderAll();
+}
+
+// Reset the editor panel back to the empty state when nothing is selected
+function showEditorEmpty() {
+  document.getElementById('editor-empty').style.display = 'flex';
+  document.getElementById('editor-form').style.display = 'none';
+}
+
+// Called whenever a form field changes — updates the annotation data and re-renders
+function saveField(field, value) {
+  const ann = annotations.find(a => a.id === selectedId);
+  if (!ann) return;
+  ann[field] = value;
+  renderSidebar();
+  renderHotspots();
+}
+
+// Handle uploading a media image for the currently selected annotation
+function handleAnnotationImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const ann = annotations.find(a => a.id === selectedId);
+    if (ann) {
+      ann.mediaImage = ev.target.result;
+      // Re-select to refresh the preview thumnail in the editor
+      selectAnnotation(selectedId);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// Remove the media image from the currently selected annotation
+function removeMediaImage() {
+  const ann = annotations.find(a => a.id === selectedId);
+  if (ann) { ann.mediaImage = ''; selectAnnotation(selectedId); }
+}
+
+
+// ═══════════════════════════════════════════════════
+//  BUTTON CUSTOMIZATION
+//  Color picker and icon mode (plus vs emoji).
+//  The icon selection persists accross sessions via
+//  the localStorage auto-save mechanism.
+// ═══════════════════════════════════════════════════
+
+function updateButtonColor(color) {
+  buttonColor = color;
+  document.getElementById('btn-color-hex').textContent = color;
+  // Update the preview circle in the sidbar to reflect the new color
+  document.getElementById('icon-preview-circle').style.background = color;
+  renderHotspots();
+}
+
+// Switch between 'plus' (default SVG) and 'emoji' icon modes
+function setIconMode(mode) {
+  iconMode = mode;
+
+  // Toggle the active class on the mode buttons
+  document.getElementById('icon-mode-plus').classList.toggle('active', mode === 'plus');
+  document.getElementById('icon-mode-emoji').classList.toggle('active', mode === 'emoji');
+
+  // Show/hide the emoji picker panel
+  document.getElementById('emoji-picker-area').style.display = mode === 'emoji' ? 'block' : 'none';
+
+  // Update the icon preview in the sidbar
+  updateIconPreview();
+  renderHotspots();
+}
+
+// Refresh the small preview circle that shows what icon is currently active
+function updateIconPreview() {
+  const circle = document.getElementById('icon-preview-circle');
+  const label = document.getElementById('icon-preview-label');
+  circle.style.background = buttonColor;
+
+  if (iconMode === 'plus') {
+    circle.innerHTML = PLUS_SVG_SMALL;
+    label.textContent = 'Default plus icon';
+  } else {
+    circle.innerHTML = '<span class="emoji-icon">' + iconEmoji + '</span>';
+    label.textContent = 'Emoji: ' + iconEmoji;
+  }
+}
+
+// Select an emoji from the picker grid
+function selectEmoji(emoji) {
+  iconEmoji = emoji;
+  updateIconPreview();
+  renderHotspots();
+  // Update the selected state on the emoji grid buttons
+  document.querySelectorAll('#emoji-grid button').forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent === emoji);
+  });
+}
+
+// Render the emoji picker grid with all categories and their emojis
+function renderEmojiGrid(filter = '') {
+  const grid = document.getElementById('emoji-grid');
+  let html = '';
+  const filterLower = filter.toLowerCase();
+
+  if (filter) {
+    // When filtering, just show a flat list of matching emojis
+    // (we cant really search by emoji name so we just filter by the charcter itself,
+    // but its still useful for quick scrolling through results)
+    const filtered = ALL_EMOJIS.filter(e => e.includes(filter));
+    if (filtered.length === 0) {
+      html = '<div style="grid-column:1/-1;text-align:center;color:#666;font-size:12px;padding:16px;">No matching emojis found</div>';
+    } else {
+      filtered.forEach(e => {
+        html += '<button onclick="selectEmoji(\'' + e + '\')" ' + (e === iconEmoji ? 'class="selected"' : '') + '>' + e + '</button>';
+      });
+    }
+  } else {
+    // No filter — show emojis organized by category with headers
+    EMOJI_CATEGORIES.forEach(cat => {
+      html += '<div class="emoji-category-label">' + cat.name + '</div>';
+      cat.emojis.forEach(e => {
+        html += '<button onclick="selectEmoji(\'' + e + '\')" ' + (e === iconEmoji ? 'class="selected"' : '') + '>' + e + '</button>';
+      });
+    });
+  }
+  grid.innerHTML = html;
+}
+
+// Called when user types in the emoji search box
+function filterEmojis(query) {
+  renderEmojiGrid(query);
+}
+
+
+// ═══════════════════════════════════════════════════
+//  RENDERING FUNCTIONS
+//  These update the DOM to refelct the current state.
+//  renderSidebar handles the annotation card list,
+//  renderHotspots handles the buttons on the image.
+// ═══════════════════════════════════════════════════
+
+function renderAll() {
+  renderSidebar();
+  renderHotspots();
+}
+
+// Rebuild the sidebar annotation card list from scratch
+function renderSidebar() {
+  const list = document.getElementById('annotation-list');
+  document.getElementById('annotation-count').textContent = annotations.length + ' / 20';
+  list.innerHTML = annotations.map((ann, i) => `
+    <div class="annotation-card ${ann.id === selectedId ? 'active' : ''}" onclick="selectAnnotation(${ann.id})">
+      <div class="card-header">
+        <span class="card-num">${i+1}</span>
+        <button class="card-delete" onclick="event.stopPropagation();removeAnnotation(${ann.id})" title="Delete">&times;</button>
+      </div>
+      <div class="card-title">${ann.title || 'Untitled'}</div>
+      ${ann.subtitle ? '<div class="card-subtitle">'+ann.subtitle+'</div>' : ''}
+      <div class="card-pos">top: ${parseFloat(ann.top).toFixed(1)}% · left: ${parseFloat(ann.left).toFixed(1)}%</div>
+    </div>
+  `).join('');
+}
+
+// Rebuild the hotspot buttons overlaid on the canvas image.
+// This gets called frequnetly during drag operations so it needs to be reasonably fast.
+function renderHotspots() {
+  const container = document.getElementById('hotspot-container');
+  if (!container) return;
+
+  // Determine what goes inside each button — either the plus SVG or the chosen emoji
+  const iconContent = iconMode === 'plus'
+    ? PLUS_SVG
+    : '<span class="emoji-icon">' + iconEmoji + '</span>';
+
+  container.innerHTML = annotations.map((ann, i) => `
+    <button class="hotspot-btn ${ann.id === selectedId ? 'active' : ''}"
+      data-id="${ann.id}"
+      style="top:${ann.top}%;left:${ann.left}%;background:${buttonColor};"
+      onmousedown="startDrag(event, ${ann.id})"
+      onclick="selectAnnotation(${ann.id})">
+      ${iconContent}
+    </button>
+  `).join('');
+}
+
+
+// ═══════════════════════════════════════════════════
+//  DRAG & DROP FOR HOTSPOT REPOSITONING
+//  When the user mousedowns on a hotspot button we
+//  track mouse movement and update the annotation's
+//  top/left percentages in realtime. Releasing the
+//  mouse finishes the drag opreation.
+// ═══════════════════════════════════════════════════
+
+function startDrag(e, id) {
+  e.preventDefault();
+  const wrapper = document.getElementById('canvas-wrapper');
+  const rect = wrapper.getBoundingClientRect();
+  dragState = { id, rect };
+  const btn = e.target.closest('.hotspot-btn');
+  if (btn) btn.classList.add('dragging');
+  selectAnnotation(id);
+
+  // Mouse move handler — recalculate position as percentage of wrapper dimensions
+  function onMove(ev) {
+    const x = ((ev.clientX - rect.left) / rect.width * 100);
+    const y = ((ev.clientY - rect.top) / rect.height * 100);
+    const ann = annotations.find(a => a.id === id);
+    if (ann) {
+      // Clamp values between 0 and 100 so the button cant leave the image boundaries
+      ann.left = Math.max(0, Math.min(100, x)).toFixed(1);
+      ann.top = Math.max(0, Math.min(100, y)).toFixed(1);
+      renderHotspots();
+      // Also update the number inputs in the editor if this annotation is selected
+      if (selectedId === id) {
+        document.getElementById('ed-top').value = ann.top;
+        document.getElementById('ed-left').value = ann.left;
+      }
+      renderSidebar();
+    }
+  }
+
+  // Mouse up handler — clean up the drag state and remove event listners
+  function onUp() {
+    document.querySelectorAll('.hotspot-btn').forEach(b => b.classList.remove('dragging'));
+    dragState = null;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+
+// ═══════════════════════════════════════════════════
+//  PREVIEW
+//  Generates a live preview of the final widget and
+//  displays it in a modal overlay. This uses the same
+//  markup structure as the embed code ouput so what
+//  you see in preview is what you get in production.
+// ═══════════════════════════════════════════════════
+
+function showPreview() {
+  // Make sure the user has actually set something up before previewing
+  if (!mainImageSrc || annotations.length === 0) {
+    alert('Upload an image and add at least one annotation first.');
+    return;
+  }
+  const html = generatePreviewHTML();
+  document.getElementById('preview-content').innerHTML = html;
+  document.getElementById('preview-modal').classList.add('show');
+
+  // Wire up the click handlers on the preview hotspot buttons
+  // We use setTimeout because the HTML needs to be in the DOM first
+  setTimeout(() => {
+    document.querySelectorAll('.hp-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const idx = this.getAttribute('data-index');
+        // Hide all content blocks and deactivate all buttons
+        document.querySelectorAll('.hp-content-block').forEach(b => b.classList.remove('hp-visible'));
+        document.querySelectorAll('.hp-btn').forEach(b => b.classList.remove('hp-active'));
+        // Then show the clicked one
+        this.classList.add('hp-active');
+        const target = document.querySelector('.hp-content-block[data-index="'+idx+'"]');
+        if (target) target.classList.add('hp-visible');
+      });
+    });
+  }, 100);
+}
+
+// Build the preview HTML — basically the same as what the embed code will produce
+function generatePreviewHTML() {
+  // Generate the icon markup based on current mode selection
+  const iconMarkup = iconMode === 'plus'
+    ? PLUS_SVG
+    : '<span class="emoji-icon">' + iconEmoji + '</span>';
+
+  let btnsHtml = annotations.map((ann, i) => `
+    <button class="hp-btn ${i===0?'hp-active':''}" data-index="${i}" style="top:${ann.top}%;left:${ann.left}%;background:${buttonColor};">
+      ${iconMarkup}
+    </button>
+  `).join('');
+
+  let blocksHtml = annotations.map((ann, i) => `
+    <div class="hp-content-block ${i===0?'hp-visible':''}" data-index="${i}">
+      ${ann.mediaImage ? '<img src="'+ann.mediaImage+'" alt="">' : ''}
+      ${ann.subtitle ? '<h4>'+ann.subtitle+'</h4>' : ''}
+      <h3>${ann.title}</h3>
+      <p>${ann.description.replace(/\n/g, '<br>')}</p>
+    </div>
+  `).join('');
+
+  return `
+    <div class="hotspots-preview-wrapper">
+      <div class="hotspots-preview-image-area">
+        <img src="${mainImageSrc}" alt="">
+        ${btnsHtml}
+      </div>
+      <div class="hotspots-preview-content">${blocksHtml}</div>
+    </div>
+  `;
+}
+
+
+// ═══════════════════════════════════════════════════
+//  EMBED CODE GENERATION
+//  This is the main output of the tool — a complete
+//  self-contained HTML document that can be pasted
+//  directly into a Wix HTML embed widgt. It includes
+//  all styles and JS inline so there are no external
+//  dependancies to worry about.
+// ═══════════════════════════════════════════════════
+
+function showCode() {
+  if (!mainImageSrc || annotations.length === 0) {
+    alert('Upload an image and add at least one annotation first.');
+    return;
+  }
+  const code = generateEmbedCode();
+  document.getElementById('code-output').textContent = code;
+  document.getElementById('code-modal').classList.add('show');
+}
+
+function generateEmbedCode() {
+  // For Wix we generate a fully self-contained HTML page that goes in an embed widget.
+  // If the user uploaded images locally, they'll be base64 data urls which is fine
+  // for testing but they should replace them with hosted URLs for produciton.
+  const imageNote = mainImageDataUrl.startsWith('data:')
+    ? '<!-- IMPORTANT: Replace the image src below with your hosted image URL (upload to Wix Media Manager and use that URL) -->'
+    : '';
+
+  // Build the icon markup for the embed code — either the plus SVG or an emoji span
+  const embedIconMarkup = iconMode === 'plus'
+    ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M17.409 8.929H10.714V2.258C10.714 1.692 10.208 1.229 9.643 1.229C9.078 1.229 8.572 1.692 8.572 2.258V8.929H1.967C1.401 8.929 0.938 9.435 0.938 10C0.938 10.565 1.401 11.071 1.967 11.071H8.572V17.7C8.572 18.266 9.078 18.729 9.643 18.729C10.208 18.729 10.714 18.266 10.714 17.7V11.071H17.409C17.975 11.071 18.438 10.565 18.438 10C18.438 9.435 17.975 8.929 17.409 8.929Z" fill="white"/></svg>'
+    : '<span style="font-size:18px;line-height:1;">' + iconEmoji + '</span>';
+
+  // Generate the button elements — one per annotation point
+  let btnsCode = annotations.map((ann, i) => {
+    return `      <button class="hp-btn${i===0?' hp-active':''}" data-index="${i}" style="top:${ann.top}%;left:${ann.left}%;" onclick="selectHP(this,${i})">
+        ${embedIconMarkup}
+      </button>`;
+  }).join('\n');
+
+  // Generate the content blocks — these slide in when user clicks a hotspot
+  let blocksCode = annotations.map((ann, i) => {
+    let mediaImg = ann.mediaImage ? `\n        <img src="${ann.mediaImage}" alt="" style="max-width:100%;border-radius:6px;margin-bottom:12px;">` : '';
+    return `      <div class="hp-block${i===0?' hp-vis':''}" data-index="${i}">${mediaImg}
+        ${ann.subtitle ? '<h4>'+escHtml(ann.subtitle)+'</h4>' : ''}
+        <h3>${escHtml(ann.title)}</h3>
+        <p>${escHtml(ann.description).replace(/\n/g, '<br>')}</p>
+      </div>`;
+  }).join('\n');
+
+  // Assemble the complete HTML document for the Wix embed
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+${imageNote}
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: transparent; }
+  .hp-wrap { display: flex; flex-direction: row; max-width: 1170px; margin: 0 auto; }
+  .hp-img-area { position: relative; flex: 0 0 60%; }
+  .hp-img-area img { width: 100%; display: block; }
+  .hp-content { flex: 0 0 40%; padding: 20px 0 20px 40px; display: flex; align-items: center; }
+  .hp-btn {
+    position: absolute; width: 40px; height: 40px; border-radius: 50%;
+    background: ${buttonColor}; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%); transition: transform 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 2;
+  }
+  .hp-btn:hover, .hp-btn.hp-active { transform: translate(-50%, -50%) scale(1.15); }
+  .hp-block { display: none; flex-direction: column; }
+  .hp-block.hp-vis { display: flex; }
+  .hp-block h4 { font-size: 13px; letter-spacing: 3px; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+  .hp-block h3 { font-size: 22px; font-weight: 700; color: #111; margin-bottom: 12px; text-transform: uppercase; }
+  .hp-block p { font-size: 14px; line-height: 1.6; color: #444; }
+  /* Responsive layout for mobile — stack vertically instead of side by side */
+  @media (max-width: 768px) {
+    .hp-wrap { flex-direction: column; }
+    .hp-img-area { flex: none; width: 100%; }
+    .hp-content { flex: none; width: 100%; padding: 20px; }
+    .hp-btn { width: 32px; height: 32px; }
+    .hp-btn svg { width: 16px; height: 16px; }
+  }
+</style>
+</head>
+<body>
+  <div class="hp-wrap">
+    <div class="hp-img-area">
+      <img src="${mainImageSrc}" alt="Product image">
+${btnsCode}
+    </div>
+    <div class="hp-content">
+${blocksCode}
+    </div>
+  </div>
+  <script>
+    function selectHP(btn, idx) {
+      document.querySelectorAll('.hp-block').forEach(b => b.classList.remove('hp-vis'));
+      document.querySelectorAll('.hp-btn').forEach(b => b.classList.remove('hp-active'));
+      btn.classList.add('hp-active');
+      var t = document.querySelector('.hp-block[data-index="'+idx+'"]');
+      if (t) t.classList.add('hp-vis');
+    }
+  <\/script>
+</body>
+</html>`;
+}
+
+
+// ═══════════════════════════════════════════════════
+//  UTILITY FUNCTIONS
+//  Small helpers that don't fit neatly into any
+//  other section. escHtml prevents XSS in the
+//  generated embed code by sanitzing user input.
+// ═══════════════════════════════════════════════════
+
+// Escape HTML special characters to prevent injection in the ouput code
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Copy the generated embed code to clipbaord with visual feedback
+function copyCode() {
+  const code = document.getElementById('code-output').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+// Close any modal overlay by its element id
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// Close modals when user clicks the dark overlay background
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('show'); });
+});
+
+
+// ═══════════════════════════════════════════════════
+//  PROJECT PERSISTENCE (localStorage)
+//  Auto-saves the entire project state every 3 sec
+//  so the user doesn't lose thier work if they
+//  accidentally close the tab or refresh the page.
+//  On load we check for exisiting saved data and
+//  restore everything to where they left off.
+// ═══════════════════════════════════════════════════
+
+function saveProject() {
+  const data = {
+    annotations,
+    mainImageSrc: mainImageDataUrl,
+    buttonColor,
+    iconMode,     // persist the icon mode selecton
+    iconEmoji     // and which emoji was chosen
+  };
+  try { localStorage.setItem('hotspot-editor-project', JSON.stringify(data)); } catch(e) {}
+}
+
+function loadProject() {
+  try {
+    const raw = localStorage.getItem('hotspot-editor-project');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+
+    // Restore annotation data
+    if (data.annotations) annotations = data.annotations;
+
+    // Restore the main product image if one was prevously uploaded
+    if (data.mainImageSrc) {
+      mainImageSrc = data.mainImageSrc;
+      mainImageDataUrl = data.mainImageSrc;
+      document.getElementById('main-image').src = mainImageSrc;
+      document.getElementById('upload-zone').style.display = 'none';
+      document.getElementById('canvas-wrapper').style.display = 'inline-block';
+    }
+
+    // Restore button color
+    if (data.buttonColor) {
+      buttonColor = data.buttonColor;
+      document.getElementById('btn-color').value = buttonColor;
+      document.getElementById('btn-color-hex').textContent = buttonColor;
+    }
+
+    // Restore icon mode and emoji selection
+    if (data.iconMode) {
+      iconMode = data.iconMode;
+      setIconMode(iconMode); // this also updates the UI toggle btns
+    }
+    if (data.iconEmoji) {
+      iconEmoji = data.iconEmoji;
+    }
+
+    renderAll();
+    updateIconPreview();
+  } catch(e) {
+    // If anything goes wrong with loading, just start fresh — don't crash the app
+  }
+}
+
+// Save every 3 seconds — frequent enought to not lose much work but
+// not so frequent that it hammers localStorage on every keystroke
+setInterval(saveProject, 3000);
+
+
+// ═══════════════════════════════════════════════════
+//  INITIALIZATION
+//  Load any saved project data, render everthing,
+//  and populate the emoji picker grid so its ready
+//  to go when the user switches to emoji mode.
+// ═══════════════════════════════════════════════════
+
+loadProject();
+renderAll();
+renderEmojiGrid();
+updateIconPreview();
+</script>
+</body>
+</html>

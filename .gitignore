@@ -1,2 +1,34 @@
+# OS
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
 *.log
+logs/
+
+# Browser/Cache
+.cache/
+*.cache
+dist/
+build/
+.temp/
+
+# Environment
+.env
+.env.local
+
+# Temp files
+*.tmp
+.DS_Store/
+
+# Test coverage
+.coverage
+.pytest_cache/
