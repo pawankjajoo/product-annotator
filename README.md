@@ -1,32 +1,27 @@
-# Product Annotator
+# product-annotator
 
-Interactive hotspot annotation tool for creating product image callouts. Generates embeddable code for Wix and other websites.
+Interactive hotspot annotation tool for product images, generates embeddable code for Wix.
 
 ## Features
 
-- Drag-and-drop product image upload or URL input
-- Add and position unlimited hotspot annotations on images
-- Custom titles, subtitles, descriptions for each hotspot
-- Upload optional media (images, icons) per annotation
-- Icon modes - default plus sign or custom emoji picker
+- Drag-and-drop image upload or URL input
+- Unlimited draggable hotspot annotations
+- Custom titles/subtitles/descriptions per hotspot
+- Optional media uploads per annotation
+- Icon modes (plus sign or custom emoji picker)
 - Customizable hotspot button colors
-- Real-time live preview with interactive hotspots
-- Auto-generate HTML/CSS/JavaScript embed code
-- localStorage auto-save of project state
-- Copy-to-clipboard functionality for generated code
-- Support for data URLs and hosted image URLs
-- HTML escaping to prevent XSS injection
+- Real-time live preview
+- Auto-generated HTML/CSS/JS embed code
+- localStorage autosave and copy-to-clipboard
+- XSS protection via HTML escaping
 
 ## Tech Stack
 
-- HTML5 / CSS3 / Vanilla JavaScript
-- Canvas positioning for hotspot placement
-- localStorage for project persistence
-- Modal overlays for preview and code display
+HTML5, CSS3, Vanilla JavaScript, Canvas positioning, localStorage, Modal overlays
 
 ## License
 
-MIT License
+MIT
 
 ## Author
 
